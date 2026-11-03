@@ -7,7 +7,7 @@
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex, Editor, EditorState, InputState, Input, TextareaState, Textarea } from "gpui-base";
 import { appHome, closeOverlay, exec, openOverlay, focused, hc, home, notify, props, readTextFile, run, setShared, settings, shared, spaces, terminals, theme, window as win, writeTextFile } from "herdr";
-import { RUN_LABEL, actionScript, choiceOf, choicesFromOutput, draftOf, editedDoc, entryFromDraft, loadActions, primaryKeyHeld, primaryKeyLabel, rank, runningActions, serialize, terminalName } from "./logic.js";
+import { RUN_LABEL, actionScript, choiceOf, choicesFromOutput, draftOf, editedDoc, entryFromDraft, liveInCore, loadActions, primaryKeyHeld, primaryKeyLabel, rank, runningActions, serialize, terminalName } from "./logic.js";
 
 const ROW_H = 32;
 const HEAD_H = 26;
@@ -15,6 +15,10 @@ const SHOWN = 10;
 // How long a command may take and still not open a terminal over the tab: one
 // that is already done (`open <url>`) has nothing to show.
 const SHOW_AFTER_MS = 150;
+// The app lists a terminal some 300 ms after the core starts it (Herdr 0.1.12), and
+// the run opens over the tab only once it does.
+const LIST_WAIT_MS = 2000;
+const LIST_POLL_MS = 25;
 const READ_AFTER_MS = 150;
 const GETS_VALUE = "The command gets it as $VALUE, and as $VALUE_URLENCODED for a web address.";
 const MODES = [
@@ -43,6 +47,19 @@ function showRun(terminal, name) {
       ],
     },
   });
+}
+
+// Whether a just-started action can open over the tab: it isn't done yet, and the
+// app lists its terminal. Asks the core first, not terminals(): the app doesn't
+// list the terminal yet at this point. False leaves it under Running.
+async function showable(terminal, cx) {
+  await cx.sleep(SHOW_AFTER_MS);
+  if (!liveInCore(await hc(["get", "--json", terminal]))) return false;
+  for (let waited = 0; waited < LIST_WAIT_MS; waited += LIST_POLL_MS) {
+    if (terminals().some((t) => t.address === terminal && t.state === "live")) return true;
+    await cx.sleep(LIST_POLL_MS);
+  }
+  return false;
 }
 
 export default class QuickActions extends View {
@@ -235,8 +252,7 @@ export default class QuickActions extends View {
         if (r.code !== 0) return this.fail(`${action.name}: ${r.stderr.trim() || r.stdout.trim()}`);
         const address = JSON.parse(r.stdout).address;
         const terminal = on && !address.includes("/") ? `${on}/${address}` : address;
-        await cx.sleep(SHOW_AFTER_MS);
-        if (terminals().some((t) => t.address === terminal && t.state === "live")) showRun(terminal, action.name);
+        if (await showable(terminal, cx)) showRun(terminal, action.name);
         this.close();
       } catch (e) {
         this.fail(`${action.name}: ${e.message}`);

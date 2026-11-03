@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
-import { RUN_LABEL, actionScript, choiceOf, choicesFromOutput, draftOf, editedDoc, entryFromDraft, fuzzyScore, loadActions, problemWith, rank, runningActions, serialize, shellQuote, terminalName, urlEncode, primaryKeyHeld, primaryKeyLabel } from "./logic.js";
+import { RUN_LABEL, actionScript, choiceOf, choicesFromOutput, draftOf, editedDoc, entryFromDraft, fuzzyScore, liveInCore, loadActions, problemWith, rank, runningActions, serialize, shellQuote, terminalName, urlEncode, primaryKeyHeld, primaryKeyLabel } from "./logic.js";
 
 const sh = (script) => execFileSync("sh", ["-c", script], { encoding: "utf8" });
 
@@ -114,6 +114,13 @@ test("running actions come from live labelled terminals only", () => {
     { address: "t3", state: "live" },
     { address: "t4", state: "exited", labels: { [RUN_LABEL]: "Old" } },
   ]), [{ terminal: "t1", name: "Brew" }]);
+});
+
+test("the core says whether an action still runs", () => {
+  assert.equal(liveInCore({ code: 0, stdout: '{"address":"t54","state":"live"}\n', stderr: "" }), true);
+  assert.equal(liveInCore({ code: 0, stdout: '{"address":"t54","state":"exited"}\n', stderr: "" }), false);
+  assert.equal(liveInCore({ code: 3, stdout: '{"error":{"kind":"not_found","message":"no terminal \\"t50\\""}}', stderr: "" }), false);
+  assert.equal(liveInCore({ code: 0, stdout: "not json", stderr: "" }), false);
 });
 
 test("terminal names fit hc's rule", () => {
