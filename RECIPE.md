@@ -35,7 +35,7 @@ A popup launcher for your own one-off commands. Press a key, type a few letters 
 - **Running dialog:** `openOverlay` with `kind: "dialog"` and a layout of two blocks: this mod with props `{ part: "bar", terminal, name }`, and `{ terminal }`.
 - **Herdr functions:** `window` (`platform` picks ⌘ or Ctrl), `exec`, `hc`, `readTextFile`, `writeTextFile`, `shared`, `setShared`, `focused`, `spaces`, `terminals`, `theme`, `settings`, `notify`, `openOverlay`, `closeOverlay`, `run`, `home`, `appHome`, `props`.
 - **Commands:** `terminal.kill` and `terminal.keep`.
-- **Programs it runs:** `hc run` and `sh -c`, with the commands you write. It reads and writes `~/.config/herdr-app/quick-actions.json`. It does not reach the network.
+- **Programs it runs:** `hc run`, `hc get` and `sh -c`, with the commands you write. It reads and writes `~/.config/herdr-app/quick-actions.json`. It does not reach the network.
 - **The file:** a list, shown in file order:
 
   ```json
@@ -53,6 +53,7 @@ A popup launcher for your own one-off commands. Press a key, type a few letters 
 
 - **Platforms:** tested on macOS. Linux should work, but it is not tested yet. Windows is not supported, because actions, `choices_command` and the failure message all use `sh` and `/dev/tty`.
 - **The first frame:** a file read finishes after the first frame, and the redraw then held the app up for about a second. So the rows are drawn from a copy in `shared("quick-actions.file")`, and the file is read 150 ms later. After a hand edit, the first open shows the old list for a moment.
+- **A new terminal is listed late:** Herdr 0.1.12 lists a terminal in `terminals()` about 300 ms after `hc run --bg` returns. A single `terminals()` check 150 ms after the start never finds it, so the dialog never opens. Instead, ask the core after 150 ms with `hc get --json <t>` (a finished `--rm` terminal answers `not_found`), then wait until `terminals()` lists the terminal before you open the dialog.
 - **Do not use `localStorage` for that copy:** an overlay's store is per overlay id, so it is empty on each open and leaves a new file behind.
 - **Keep the file out of the mod folder:** saving any file in the folder reloads the mod, which would reset an open form.
 - **A broken file:** the form must not overwrite it. "New action" is hidden, and "Edit quick-actions.json" stays so it can be repaired.
@@ -66,6 +67,7 @@ A popup launcher for your own one-off commands. Press a key, type a few letters 
 - `node --test mods/quick-actions/logic.test.mjs` passes and `herdr-app check` passes.
 - With no file, the popup shows "New action" and "Edit quick-actions.json", and saving a new action creates the file.
 - An answer of `a b; touch x` reaches the command unchanged as `"$VALUE"`, and no file named `x` appears.
+- A command that runs for a few seconds opens its dialog, and `true` opens none.
 - "✕ stop" ends a running command. "– minimize" leaves it listed under "Running", and selecting it there brings it back.
 - A command that exits with code 7 shows that code and waits for Enter.
 - A file with invalid JSON shows a red row, and Save in the raw editor refuses invalid JSON.

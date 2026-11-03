@@ -153,6 +153,17 @@ export function runningActions(terminals) {
     .map((t) => ({ terminal: t.address, name: t.labels[RUN_LABEL] }));
 }
 
+// Whether `hc get --json <t>` says the terminal still runs. A finished one is gone
+// (`--rm`), so hc answers not_found with a nonzero code.
+export function liveInCore(result) {
+  if (result.code !== 0) return false;
+  try {
+    return JSON.parse(result.stdout).state === "live";
+  } catch {
+    return false;
+  }
+}
+
 // A valid `hc run --name`: 1-32 of a-z 0-9 - _, unique among live terminals.
 export function terminalName(actionName, unique) {
   const slug = actionName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 25).replace(/-+$/, "");
