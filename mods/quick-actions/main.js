@@ -132,6 +132,14 @@ export default class QuickActions extends View {
     closeOverlay(props().overlay);
   }
 
+  // The run over the tab, in place of this picker. Close first: the run's terminal
+  // gets the keyboard only then, as closing the picker after it gives the keyboard
+  // back to the pane below.
+  closeAndShow(terminal, name) {
+    this.close();
+    showRun(terminal, name);
+  }
+
   back(cx) {
     this.stage = "actions";
     this.action = null;
@@ -186,10 +194,7 @@ export default class QuickActions extends View {
 
   activate(row, cx) {
     if (!row) return;
-    if (row.run) {
-      showRun(row.run.terminal, row.run.name);
-      return this.close();
-    }
+    if (row.run) return this.closeAndShow(row.run.terminal, row.run.name);
     if (row.isNew) return this.openEditor(null, cx);
     if (row.isRaw) return this.openRaw(cx);
     if (row.value !== undefined) return this.start(this.action, row.value, cx);
@@ -252,8 +257,8 @@ export default class QuickActions extends View {
         if (r.code !== 0) return this.fail(`${action.name}: ${r.stderr.trim() || r.stdout.trim()}`);
         const address = JSON.parse(r.stdout).address;
         const terminal = on && !address.includes("/") ? `${on}/${address}` : address;
-        if (await showable(terminal, cx)) showRun(terminal, action.name);
-        this.close();
+        if (await showable(terminal, cx)) this.closeAndShow(terminal, action.name);
+        else this.close();
       } catch (e) {
         this.fail(`${action.name}: ${e.message}`);
       }

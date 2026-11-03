@@ -23,7 +23,7 @@ A popup launcher for your own one-off commands. Press a key, type a few letters 
 - **Keys:** ↑/↓ and Ctrl+N/Ctrl+P move, Page Up/Page Down move by 10, Enter runs, ⌘E edits the selected action, Esc closes or goes back. In the form, Tab moves between fields and ⌘Enter saves. On Linux, Ctrl replaces ⌘.
 - **Before it runs:** an action can run right away, ask you to type, let you pick from a list in the file, or let you pick from the output of a second command.
 - **The answer:** the command gets it as `$VALUE`, and URL-encoded as `$VALUE_URLENCODED`. These are shell variables, so an answer with spaces or `;` cannot break the command when you quote them.
-- **Running:** a command that ends within about 150 ms opens no terminal. A command that fails keeps its terminal open with the exit code until you press Enter.
+- **Running:** a command that ends within about 150 ms opens no terminal. The terminal of a running action has the keyboard, so you can type into it without a click. A command that fails keeps its terminal open with the exit code until you press Enter.
 - **Stop:** "✕ stop" ends the command. "– minimize" only closes the dialog: the command keeps running, and you bring it back from "Running" in the popup. Clicking beside the dialog also closes it without stopping the command.
 - **Agent status:** this mod shows none. Actions are plain terminals.
 
@@ -54,6 +54,7 @@ A popup launcher for your own one-off commands. Press a key, type a few letters 
 - **Platforms:** tested on macOS. Linux should work, but it is not tested yet. Windows is not supported, because actions, `choices_command` and the failure message all use `sh` and `/dev/tty`.
 - **The first frame:** a file read finishes after the first frame, and the redraw then held the app up for about a second. So the rows are drawn from a copy in `shared("quick-actions.file")`, and the file is read 150 ms later. After a hand edit, the first open shows the old list for a moment.
 - **A new terminal is listed late:** Herdr 0.1.12 lists a terminal in `terminals()` about 300 ms after `hc run --bg` returns. A single `terminals()` check 150 ms after the start never finds it, so the dialog never opens. Instead, ask the core after 150 ms with `hc get --json <t>` (a finished `--rm` terminal answers `not_found`), then wait until `terminals()` lists the terminal before you open the dialog.
+- **Keyboard in the dialog:** close the popup first, then open the dialog, in the same step. Closing the popup after the dialog opens gives the keyboard back to the pane below. Nothing moves it into the dialog afterwards: `pane.focus` does not reach a terminal in an overlay, and `openOverlay` has no focus option.
 - **Do not use `localStorage` for that copy:** an overlay's store is per overlay id, so it is empty on each open and leaves a new file behind.
 - **Keep the file out of the mod folder:** saving any file in the folder reloads the mod, which would reset an open form.
 - **A broken file:** the form must not overwrite it. "New action" is hidden, and "Edit quick-actions.json" stays so it can be repaired.
@@ -68,6 +69,7 @@ A popup launcher for your own one-off commands. Press a key, type a few letters 
 - With no file, the popup shows "New action" and "Edit quick-actions.json", and saving a new action creates the file.
 - An answer of `a b; touch x` reaches the command unchanged as `"$VALUE"`, and no file named `x` appears.
 - A command that runs for a few seconds opens its dialog, and `true` opens none.
+- You can type into a running action's terminal without a click, also after you bring it back from "Running".
 - "✕ stop" ends a running command. "– minimize" leaves it listed under "Running", and selecting it there brings it back.
 - A command that exits with code 7 shows that code and waits for Enter.
 - A file with invalid JSON shows a red row, and Save in the raw editor refuses invalid JSON.
